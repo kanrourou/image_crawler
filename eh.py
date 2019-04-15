@@ -2,6 +2,8 @@
 from bs4 import BeautifulSoup
 import sys
 import utils
+import time
+import os
 
 def get_page_urls(html):
     soup = BeautifulSoup(html, 'html.parser')
@@ -51,29 +53,80 @@ def get_file_name(total_images, idx):
    filled_length = len(str(idx))
    return '0' * (total_length - filled_length) + str(idx)
 
-def download(site):
+def print_metadata(data):
+    for key,value in data.items():
+        if(key == 'Pages'):
+            continue
+        print(key + ' : ' + value)
+
+def download_gallery(site):
+    start = time.time()
     html = utils.get_html(site)
+    if not html:
+        print('Failed to retrieve gallery page, process will be aborted!')
     metadata = get_gallery_metadata(html)
     urls = get_page_urls(html)
     sections = metadata["Length"].split()
-    total_images = int(sections[0])
+    total_images = int(sections[0]) if sections else 0
     title = metadata["Title"]
-    utils.create_dir(title)
-    utils.print_progress(0, total_images)
+    print('Below is the informaiton of the gallery...')
+    print_metadata(metadata)
+    print('Start downloading...')
+    if not utils.create_dir(title):
+        return
+    if total_images:
+        utils.print_progress(0, total_images)
+    else:
+        print("Failed to get total number of images, progress bar is disabled!")
     i = 0
+    img_fails = []
+    gallery_page_fails = []
+    img_page_fails = []
 
+    #download images in each gallery page
     for url in urls:
         page_html = utils.get_html(url)
+        if not page_html:
+            gallery_page_fails.append(url)
+            continue
         image_urls = get_image_urls(page_html)
         for image_url in image_urls:
             image_page_html = utils.get_html(image_url)
+            if not image_page_html:
+                img_page_fails.append(image_url)
+                continue
             image_src = get_image_src(image_page_html)
             parts = image_src.split('.')
             extension = ('.' + parts[-1] if parts[-1]  else '.jpg') if parts else  '.jpg'
-            utils.get_image(image_src, title + '/' + get_file_name(total_images, i + 1) + extension)
+            file_name = get_file_name(total_images, i + 1) + extension
+            file_path = title + '/' + file_name
+            if not os.path.exists(file_path):
+                if not utils.get_image(image_src, file_path):
+                    img_fails.append([image_src, file_path, file_name])
             i += 1
-            utils.print_progress(i, total_images)
+            if total_images:
+                utils.print_progress(i, total_images)
 
+    #downloading result
+    if(img_fails):
+        msg = 'Failed to download following %s files...' % len(img_fails)
+        print(msg)
+        for k in Range(1, 4):
+            if not img_fails:
+                print('All files are downloaded successfully!')
+                break
+            print('start retry %s...')
+            img_fails = [img for img in img_fails if not utils.get_image(img[0], img[1])]
+        print('Finished retry, failed to download %s files...' % len(img_fails))
+        for img in img_fails:
+            print(img[2])
+    else:
+        print('All files are downloaded successfully!')
+    end = time.time()
+    hours, rem = divmod(end-start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print("Total time elapsed {:0>2}m:{:02.0f}s".format(int(hours) * 60 + int(minutes),seconds))
+     
 
 site = sys.argv[1]
-download(site)
+download_gallery(site)

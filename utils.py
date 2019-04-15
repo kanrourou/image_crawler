@@ -1,28 +1,37 @@
 # -*- coding: utf-8 -*-
 import requests
 import shutil
-import urllib.request as urllib2 #python3 compatibility
+import urllib.request
 import sys
 from zipfile import ZipFile
 import os
-
+from urllib.error import HTTPError
+from urllib.error import URLError
 
 def get_html(url):
-    hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-            'Accept-Encoding': 'none',
-            'Accept-Language': 'en-US,en;q=0.8',
-            'Connection': 'keep-alive'}
-    req = urllib2.Request(url, headers=hdr)
-    page = urllib2.urlopen(req)
-    content = page.read()
-    return content
+    try:
+        hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+                'Accept-Encoding': 'none',
+                'Accept-Language': 'en-US,en;q=0.8',
+                'Connection': 'keep-alive'}
+        req = urllib.request.Request(url, headers=hdr)
+        page = urllib.request.urlopen(req)
+        content = page.read()
+        return content
+    except (HTTPError, URLError) as error:
+        return ''
 
 def get_image(url, path):
-    with urllib2.urlopen(url) as response, open(path, 'wb') as out_file:
-        data = response.read()
-        out_file.write(data)
+    try:
+        with urllib.request.urlopen(url) as response, open(path, 'wb') as out_file:
+            data = response.read()
+            out_file.write(data)
+    except (HTTPError, URLError) as error:
+        return False
+    else:
+        return True
 
 # Print iterations progress
 def print_progress(iteration, total, prefix='Progress::', suffix='Complete', decimals=1, bar_length=100):
@@ -48,12 +57,14 @@ def print_progress(iteration, total, prefix='Progress::', suffix='Complete', dec
     sys.stdout.flush()
 
 def create_dir(path):
-    if os.path.exists("path"):
-        print('Directory %s already exists' % path)
-        return
+    if os.path.exists(path):
+        print('Directory %s already exists, all existing files will be skiped when downloading' % path)
+        return True
     try:  
         os.mkdir(path)
     except OSError:  
         print ("Creation of the directory %s failed" % path)
+        return False
     else:  
         print ("Successfully created the directory %s " % path)
+        return True
