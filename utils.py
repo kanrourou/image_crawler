@@ -62,7 +62,8 @@ def create_dir(path):
         return True
     try:  
         os.mkdir(path)
-    except OSError:  
+    except OSError as error:
+        print(error)
         print ("Creation of the directory %s failed" % path)
         return False
     else:  

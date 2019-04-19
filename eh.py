@@ -64,6 +64,7 @@ def download_gallery(site):
     html = utils.get_html(site)
     if not html:
         print('Failed to retrieve gallery page, process will be aborted!')
+        return
     metadata = get_gallery_metadata(html)
     urls = get_page_urls(html)
     sections = metadata["Length"].split()
@@ -72,6 +73,7 @@ def download_gallery(site):
     print('Below is the informaiton of the gallery...')
     print_metadata(metadata)
     print('Start downloading...')
+    title = title.replace('/', ' of ')
     if not utils.create_dir(title):
         return
     if total_images:
@@ -102,25 +104,26 @@ def download_gallery(site):
             file_path = title + '/' + file_name
             if not os.path.exists(file_path):
                 if not utils.get_image(image_src, file_path):
-                    img_fails.append([image_src, file_path, file_name])
+                    img_fails.append(file_name)
             i += 1
             if total_images:
                 utils.print_progress(i, total_images)
 
     #downloading result
-    if(img_fails):
-        msg = 'Failed to download following %s files...' % len(img_fails)
-        print(msg)
-        for k in Range(1, 4):
-            if not img_fails:
-                print('All files are downloaded successfully!')
-                break
-            print('start retry %s...')
-            img_fails = [img for img in img_fails if not utils.get_image(img[0], img[1])]
-        print('Finished retry, failed to download %s files...' % len(img_fails))
+    succeed = True
+    if gallery_page_fails or img_page_fails:
+        succeed = False
+        print('Failed to load following pages:')
+        for url in gallery_page_urls:
+            print(url)
+        for url in img_page_fails:
+            print(url)
+    if img_fails:
+        succeed = False
+        print('Failed to download following %s files...' % len(img_fails))
         for img in img_fails:
-            print(img[2])
-    else:
+            print(img)
+    if succeed:
         print('All files are downloaded successfully!')
     end = time.time()
     hours, rem = divmod(end-start, 3600)
