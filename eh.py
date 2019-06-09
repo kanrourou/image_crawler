@@ -61,10 +61,18 @@ def print_metadata(data):
 
 def download_gallery(site):
     start = time.time()
+    # for offensive warning
+    need_cookies = False
+    cookies = None
     html = utils.get_html(site)
     if not html:
         print('Failed to retrieve gallery page, process will be aborted!')
         return
+    if utils.is_warning_page(html):
+        print('Page has offensive content, setting cookies to get around it')
+        need_cookies = True
+        cookies = utils.get_cookies(site)
+        html = utils.get_html_with_cookies(site, cookies)
     metadata = get_gallery_metadata(html)
     urls = get_page_urls(html)
     sections = metadata["Length"].split()
@@ -87,7 +95,7 @@ def download_gallery(site):
 
     #download images in each gallery page
     for url in urls:
-        page_html = utils.get_html(url)
+        page_html = utils.get_html_with_cookies(url, cookies) if need_cookies else utils.get_html(url)
         if not page_html:
             gallery_page_fails.append(url)
             continue
@@ -107,7 +115,7 @@ def download_gallery(site):
                     img_fails.append(file_name)
             i += 1
             if total_images:
-                utils.print_progress(i, total_images)
+               utils.print_progress(i, total_images)
 
     #downloading result
     succeed = True
